@@ -57,6 +57,7 @@
 
 ☆　更新履歴　☆
 　[2021-07-09] 0.1: 初版
+　[2022-03-23] 1.0: 不具合の修正、「初手が必ず成功」の際に既定の処理回数を超えるとタイムアウトするように変更
 
 
 
@@ -81,14 +82,15 @@
 --dialog:盤面データ名,local data="default";マス色/col,color="0xd2d2d2";凸エッジ,edge_width=0.1;フォント,font_family="MS UI Gothic";選択時UI[0-2],mode_show_selection=2;単純なクリック挙動/chk,mode_click=1;常に旗を置く/chk,mode_always_flag=0;初手が必ず成功/chk,mode_first_step=0;
 
 _SWEEPER_COLOR = {empty=1, bomb=2, open_empty=3, open_bomb=4, flag_empty=5, flag_bomb=6}
-_SWEEPER_DATA_FILE_DIR = obj.getinfo("script_path").."\shu_game\\sweeper\\"  --盤面データのディレクトリ
-_SWEEPER_DATA_IMAGE_DIR = obj.getinfo("script_path").."\shu_game\\sweeper\\img\\"  --画像のディレクトリ
+_SWEEPER_DATA_FILE_DIR = obj.getinfo("script_path").."\\shu_game\\sweeper\\"  --盤面データのディレクトリ
+_SWEEPER_DATA_IMAGE_DIR = obj.getinfo("script_path").."\\shu_game\\sweeper\\img\\"  --画像のディレクトリ
 _SWEEPER_DATA_IMAGE_NAME = {bomb = "bomb.png", flag = "flag.png"}
-_SWEEPER_LIB_FILE_DIR = obj.getinfo("script_path").."\shu_game\\"  --ライブラリデータのディレクトリ
+_SWEEPER_LIB_FILE_DIR = obj.getinfo("script_path").."\\shu_game\\"  --ライブラリデータのディレクトリ
 _SWEEPER_BOARD = {}
 _SWEEPER_BOARDSIZE, _SWEEPER_BOMB_AMOUNT = 0, 0
 _SWEEPER_TEXT_COLOR = {0x0000ff, 0x008000, 0xff0000, 0xff00ff, 0xff00ff, 0xff00ff, 0xff00ff, 0xff00ff}
 _SWEEPER_BOARD_STATE = {start=1, ingame=2, clear=3, gameover=4}
+_SWEEPER_TIMEOUT = 100
 
 local objpos, objrot = {x=obj.x, y=obj.y, z=obj.z}, {rx=obj.getvalue("rx"), ry=obj.getvalue("ry"), rz=obj.getvalue("rz")}
 local zoom = obj.getvalue("zoom")/100
@@ -362,10 +364,21 @@ local function checkBoardState(_b)
 	end
 end
 
+local function bombAmount(number)
+	if number >= obj.track2*obj.track2 then
+		return obj.track2*obj.track2-1
+	end
+	if number<0 then
+		return 0
+	end
+
+	return number
+end
+
 
 if obj.check0 or io.open(_SWEEPER_DATA_FILE_DIR..data..".txt", "r")==nil then
 	_SWEEPER_BOARDSIZE = obj.track2
-	_SWEEPER_BOARD = boardInit(_SWEEPER_BOARDSIZE, obj.track3)
+	_SWEEPER_BOARD = boardInit(_SWEEPER_BOARDSIZE, bombAmount(obj.track3))
 	saveBoardData(_SWEEPER_BOARD)
 else
 	_SWEEPER_BOARD, _SWEEPER_BOARDSIZE = loadBoardData()
@@ -383,14 +396,20 @@ if state~=_SWEEPER_BOARD_STATE.clear and state~=_SWEEPER_BOARD_STATE.gameover an
 		if mode_always_flag==0 then
 			if state==_SWEEPER_BOARD_STATE.start then
 
-				--初手に周囲に爆弾がある場合はリセット
+				--初手に周囲に爆弾が多い場合はリセット
 				if mode_first_step==1 then
+					local count = 0
 					while 1 do
-						if getAroundBombAmount(_SWEEPER_BOARD, mx, my)==0 and _SWEEPER_BOARD[my][mx]==_SWEEPER_COLOR.empty then
+						if count >= _SWEEPER_TIMEOUT then --タイムアウト
 							break
 						end
-						_SWEEPER_BOARD = boardInit(_SWEEPER_BOARDSIZE, obj.track3)
+
+						if getAroundBombAmount(_SWEEPER_BOARD, mx, my)<=7 and _SWEEPER_BOARD[my][mx]==_SWEEPER_COLOR.empty then
+							break
+						end
+						_SWEEPER_BOARD = boardInit(_SWEEPER_BOARDSIZE, bombAmount(obj.track3))
 						saveBoardData(_SWEEPER_BOARD)
+						count = count + 1
 					end
 				end
 
@@ -407,8 +426,6 @@ if state~=_SWEEPER_BOARD_STATE.clear and state~=_SWEEPER_BOARD_STATE.gameover an
 		saveBoardData(_SWEEPER_BOARD)
 	end
 end
-
-debug_print(checkBoardState(_SWEEPER_BOARD))
 
 obj.load("tempbuffer")
 obj.setoption("drawtarget","framebuffer")
