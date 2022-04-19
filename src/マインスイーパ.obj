@@ -8,14 +8,13 @@
 ☆ 導入方法　☆
 	1. 「rikky_module」を導入します。
   2. 「マインスイーパ.obj」をscriptフォルダかその下の階層のフォルダにいれてください。
-	3. 「マインスイーパ..obj」と同じ場所に「shu_game」フォルダを配置してください。
-	4. カスタムオブジェクトから「マインスイーパ.」を選択してください。
+	3. カスタムオブジェクトから「マインスイーパ.」を選択してください。
 
 ☆　テスト環境　☆
 　AviUtl 1.10
-	exedit 0.93rc1
+	exedit 0.92
 	rikky_module 0.1.delta
-	shu_game.lua v1.0
+	textmodule 1.3.4
 
 ☆　遊び方　☆
 	マインスイーパをタイムラインに置いたら、画面にマインスイーパの盤面が表示されているかを確認してください。
@@ -58,7 +57,7 @@
 ☆　更新履歴　☆
 　[2021-07-09] 0.1: 初版
 　[2022-03-23] 1.0: 不具合の修正、「初手が必ず成功」の際に既定の処理回数を超えるとタイムアウトするように変更
-
+	[2022-04-20] 1.1: shu_game.luaを自動ダウンロードするように変更。
 
 
 
@@ -106,8 +105,33 @@ if size==0 then
 	return
 end
 
-require("rikky_module")
-local lib = dofile(_SWEEPER_LIB_FILE_DIR.."shu_game.lua")
+local rikky_module = require("rikky_module")
+local tm = require("textmodule")
+
+
+--shu_game.luaの読み込み
+local shu_game_dir = _SWEEPER_LIB_FILE_DIR.."shu_game.lua"
+
+if tm.fs.exists(_SWEEPER_DATA_IMAGE_DIR)==false then
+  tm.fs.create_all(_SWEEPER_DATA_IMAGE_DIR)
+end
+
+local function download()
+  tm.fs.write(shu_game_dir,
+    tm.http.get("https://raw.githubusercontent.com/shumm7/AviUtl-shu_game.lua/main/src/shu_game/shu_game.lua")
+  )
+  return
+end
+
+if (not tm.fs.exists(shu_game_dir)) then
+  return download()
+end
+if(pcall(dofile(shu_game_dir))) then
+  return download()
+end
+local lib = dofile(shu_game_dir)
+--ここまで
+
 
 local function copyBoard(_b)
 	local b = {}
@@ -164,9 +188,7 @@ local function saveBoardData(_b)
 		str = str.."\n"
 	end
 
-	fh=io.open(_SWEEPER_DATA_FILE_DIR..data..".txt", "w+")
-	fh:write(str)
-	fh:close()
+	tm.fs.write(_SWEEPER_DATA_FILE_DIR..data..".txt", str)
 end
 
 local function boardInit(size, bomb_amount)
@@ -376,7 +398,7 @@ local function bombAmount(number)
 end
 
 
-if obj.check0 or io.open(_SWEEPER_DATA_FILE_DIR..data..".txt", "r")==nil then
+if obj.check0 or tm.fs.exists(_SWEEPER_DATA_FILE_DIR..data..".txt")==false then
 	_SWEEPER_BOARDSIZE = obj.track2
 	_SWEEPER_BOARD = boardInit(_SWEEPER_BOARDSIZE, bombAmount(obj.track3))
 	saveBoardData(_SWEEPER_BOARD)
