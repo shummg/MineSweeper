@@ -57,18 +57,8 @@
 ☆　更新履歴　☆
 　[2021-07-09] 0.1: 初版
 　[2022-03-23] 1.0: 不具合の修正、「初手が必ず成功」の際に既定の処理回数を超えるとタイムアウトするように変更
-	[2022-04-20] 1.1: shu_game.luaを自動ダウンロードするように変更。
-
-
-
-
-
-
-
-
-
-
-
+  [2022-04-20] 1.1: shu_game.luaを自動ダウンロードするように変更。
+  [2022-06-26] 1.2: 不具合修正 （textmodule 1.4.0以降に対応）
 ]]
 
 
@@ -112,18 +102,18 @@ local tm = require("textmodule")
 --shu_game.luaの読み込み
 local shu_game_dir = _SWEEPER_LIB_FILE_DIR.."shu_game.lua"
 
-if tm.fs.exists(_SWEEPER_DATA_IMAGE_DIR)==false then
-  tm.fs.create_all(_SWEEPER_DATA_IMAGE_DIR)
+if tm.filesystem.exists(_SWEEPER_DATA_IMAGE_DIR)==false then
+  tm.filesystem.create_all(_SWEEPER_DATA_IMAGE_DIR)
 end
 
 local function download()
-  tm.fs.write(shu_game_dir,
+  tm.filesystem.write(shu_game_dir,
     tm.http.get("https://raw.githubusercontent.com/shumm7/AviUtl-shu_game.lua/main/src/shu_game/shu_game.lua")
   )
   return
 end
 
-if (not tm.fs.exists(shu_game_dir)) then
+if (not tm.filesystem.exists(shu_game_dir)) then
   return download()
 end
 if(pcall(dofile(shu_game_dir))) then
@@ -188,7 +178,7 @@ local function saveBoardData(_b)
 		str = str.."\n"
 	end
 
-	tm.fs.write(_SWEEPER_DATA_FILE_DIR..data..".txt", str)
+	tm.filesystem.write(_SWEEPER_DATA_FILE_DIR..data..".txt", str)
 end
 
 local function boardInit(size, bomb_amount)
@@ -398,7 +388,7 @@ local function bombAmount(number)
 end
 
 
-if obj.check0 or tm.fs.exists(_SWEEPER_DATA_FILE_DIR..data..".txt")==false then
+if obj.check0 or tm.filesystem.exists(_SWEEPER_DATA_FILE_DIR..data..".txt")==false then
 	_SWEEPER_BOARDSIZE = obj.track2
 	_SWEEPER_BOARD = boardInit(_SWEEPER_BOARDSIZE, bombAmount(obj.track3))
 	saveBoardData(_SWEEPER_BOARD)
